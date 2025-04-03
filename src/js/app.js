@@ -21,30 +21,194 @@ import "../style/index.css";
         country: null,
         city: null
     }
+
  */
 function render(variables = {}) {
-  console.log("These are the current variables: ", variables); // print on the console
-  // here we ask the logical questions to make decisions on how to build the html
-  // if includeCover==false then we reset the cover code without the <img> tag to make the cover transparent.
-  let cover = `<div class="cover"><img src="${variables.background}" /></div>`;
-  if (variables.includeCover == false) cover = "<div class='cover'></div>";
+  console.log("Current variables:", variables);
 
-  // reset the website body with the new html output
-  document.querySelector("#widget_content").innerHTML = `<div class="widget">
-            ${cover}
-          <img src="${variables.avatarURL}" class="photo" />
-          <h1>Lucy Boilett</h1>
-          <h2>Web Developer</h2>
-          <h3>Miami, USA</h3>
-          <ul class="position-right">
-            <li><a href="https://twitter.com/4geeksacademy"><i class="fab fa-twitter"></i></a></li>
-            <li><a href="https://github.com/4geeksacademy"><i class="fab fa-github"></i></a></li>
-            <li><a href="https://linkedin.com/school/4geeksacademy"><i class="fab fa-linkedin"></i></a></li>
-            <li><a href="https://instagram.com/4geeksacademy"><i class="fab fa-instagram"></i></a></li>
-          </ul>
-        </div>
-    `;
+  // --- Define default textColor if not provided ---
+  const currentColor = variables.textColor || "#333333"; // Default dark grey
+
+  // --- Cover ---
+  const cover = variables.includeCover
+    ? `<div class="cover"><img src="${variables.background}" alt="Cover Image"/></div>`
+    : '<div class="cover"></div>';
+
+  // --- Text Color Style (for initial render based on variables) ---
+  const textStyle = currentColor ? `style="color: ${currentColor};"` : "";
+
+  // --- Name Handling ---
+  const hasName = variables.name || variables.lastName;
+  const firstNameSegment = variables.name
+    ? variables.name
+    : '<span class="placeholder">First Name</span>';
+  const lastNameSegment = variables.lastName
+    ? variables.lastName
+    : '<span class="placeholder">Last Name</span>';
+  // Apply initial style if name exists
+  const nameTag = `<h1 data-content-key="name" ${
+    hasName ? textStyle : ""
+  }>${firstNameSegment} ${lastNameSegment}</h1>`; // Added data attribute
+
+  // --- Role Handling ---
+  const hasRole = variables.role;
+  const roleContent = hasRole
+    ? variables.role
+    : '<span class="placeholder">Role / Position</span>';
+  // Apply initial style if role exists
+  const roleTag = `<h2 data-content-key="role" ${
+    hasRole ? textStyle : ""
+  }>${roleContent}</h2>`; // Added data attribute
+
+  // --- Location Handling ---
+  const hasLocation = variables.city || variables.country;
+  let locationString = "";
+  if (variables.city && variables.country) {
+    locationString = `${variables.city}, ${variables.country}`;
+  } else if (variables.city) {
+    locationString = variables.city;
+  } else if (variables.country) {
+    locationString = variables.country;
+  }
+  const locationContent = hasLocation
+    ? locationString
+    : '<span class="placeholder">City, Country</span>';
+  // Apply initial style if location exists
+  const locationTag = `<h3 data-content-key="location" ${
+    hasLocation ? textStyle : ""
+  }>${locationContent}</h3>`; // Added data attribute
+
+  // --- Social Media Icons ---
+  const socialPlatforms = ["twitter", "github", "linkedin", "instagram"];
+  const socialLinksHTML = socialPlatforms
+    .map(platform => {
+      const username = variables[platform];
+      if (username) {
+        return `
+                  <li>
+                    <a href="https://www.${platform}.com/${username}" target="_blank" rel="noopener noreferrer">
+                      <i class="fab fa-${platform}"></i>
+                    </a>
+                  </li>
+                `;
+      }
+      return "";
+    })
+    .join("");
+
+  // --- ** Color Picker Button HTML (Inline Styled - Light Circle + Inline JS) ** ---
+  const colorPickerButtonHTML = `
+        <input
+            type="color"
+            class="picker" /* Class needed for potential update via existing listener */
+            for="textColor" /* Attribute needed for potential update via existing listener */
+            value="${currentColor}"
+            title="Choose text color for Name, Role, Location"
+            style="
+                position: absolute;
+                bottom: 15px;
+                right: 15px;
+                width: 26px;
+                height: 26px;
+                border: 1px solid #cccccc;
+                border-radius: 50%;
+                padding: 0;
+                cursor: pointer;
+                transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+                overflow: hidden;
+                background-color: #f0f0f0;
+                -webkit-appearance: none; -moz-appearance: none; appearance: none;
+            "
+            onmouseover="this.style.transform='scale(1.2)'; this.style.boxShadow='0 3px 8px rgba(0,0,0,0.2)';"
+            onmouseout="this.style.transform='scale(1.0)'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.12)';"
+    
+            /* ---- DIRECT DOM MANIPULATION ON INPUT ---- */
+            oninput="
+              const newColor = this.value;
+              /* Attempt to update global var for consistency if other pickers trigger re-render */
+              /* NOTE: This is a workaround due to locked onload */
+              if(window.variables) { window.variables.textColor = newColor; }
+    
+              /* Find the parent widget to scope the query */
+              const widgetContent = this.closest('.widget-content');
+              if (widgetContent) {
+                const nameEl = widgetContent.querySelector('h1[data-content-key=\\'name\\']');
+                const roleEl = widgetContent.querySelector('h2[data-content-key=\\'role\\']');
+                const locationEl = widgetContent.querySelector('h3[data-content-key=\\'location\\']');
+    
+                /* Apply color directly only if element exists AND doesn't contain a placeholder */
+                if (nameEl && !nameEl.querySelector('.placeholder')) { nameEl.style.color = newColor; }
+                if (roleEl && !roleEl.querySelector('.placeholder')) { roleEl.style.color = newColor; }
+                if (locationEl && !locationEl.querySelector('.placeholder')) { locationEl.style.color = newColor; }
+              }
+            "
+        />
+      `;
+
+  // --- Assemble Card HTML ---
+  // REMOVED the incorrect comment `{/* ... */}`
+  document.querySelector("#widget_content").innerHTML = `
+            <div class="widget">
+                ${cover}
+                <img src="${variables.avatarURL}" class="photo" alt="Avatar"/>
+    
+                <div class="widget-content" style="position: relative; padding-bottom: 50px;"> <!-- Relative position & padding needed for picker -->
+                    ${nameTag}
+                    ${roleTag}
+                    ${locationTag}
+                    <ul>
+                       ${socialLinksHTML}
+                    </ul>
+    
+                    ${colorPickerButtonHTML} <!-- Color picker added -->
+    
+                </div>
+            </div>
+        `;
 }
+
+// No changes allowed below this line as per constraints
+// The window.onload part remains the same as before
+window.onload = function() {
+  window.variables = {
+    includeCover: true,
+    background: "https://images.unsplash.com/photo-1511974035430-5de47d3b95da",
+    avatarURL: "https://randomuser.me/api/portraits/women/42.jpg",
+    socialMediaPosition: "position-right",
+    twitter: "alesgad",
+    github: "alesgad",
+    linkedin: "alesgad",
+    instagram: "alesgad",
+    name: null, // Start with null to see placeholders
+    lastName: null, // Start with null to see placeholders
+    role: null,
+    country: null,
+    city: null
+    // textColor is MISSING here
+  };
+  render(window.variables);
+
+  document.querySelectorAll(".picker").forEach(function(elm) {
+    elm.addEventListener("change", function(e) {
+      const attribute = e.target.getAttribute("for");
+      let value = e.target.value;
+
+      if (attribute === "includeCover") {
+        value = value === "true";
+      } else if (value === "" || value === "null") {
+        // This check is okay, but won't apply to a non-existent color picker
+        value = null;
+      }
+
+      let values = {};
+      values[attribute] = value;
+
+      window.variables = Object.assign(window.variables, values);
+      render(window.variables);
+    });
+  });
+};
 
 /**
  * Don't change any of the lines below, here is where we do the logic for the dropdowns
